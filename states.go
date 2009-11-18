@@ -10,6 +10,7 @@ type State struct {
 	Id	int;
 	Name	string;
 	Abbv	string;
+	
 	Null	bool;
 	*dm.Model;
 }

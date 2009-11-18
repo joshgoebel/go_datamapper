@@ -7,6 +7,7 @@ import (
 	"reflect";
 	"container/vector";
 	"os";
+	"log";
 )
 
 //type Connection sqlite3.Handle;
@@ -37,6 +38,7 @@ const (
 
 var conn *sqlite3.Handle
 var models map[string]Model
+var logger *log.Logger
 
 func AddModel(name string, table string, t reflect.Type) (m Model){
 	m = Model{name, table, t, conn};
@@ -47,6 +49,9 @@ func AddModel(name string, table string, t reflect.Type) (m Model){
 func Init(dbname string) {
 	conn = new(sqlite3.Handle);
 	models = make(map[string] Model);
+	os.Mkdir("log",0555);
+	file, _ := os.Open("log/dm.log", os.O_WRONLY|os.O_CREAT|os.O_TRUNC, 0666);
+	logger = log.New(file, nil, "", 0);
 	r := conn.Open(dbname);
 	if r != "" {
 		println("ERROR")
@@ -111,7 +116,7 @@ func build_result(o reflect.Value, st *sqlite3.Statement) reflect.Value {
 
 func Execute(sql string) (s *sqlite3.Statement, err int) {
 	errs := "";
-	// println(sql);
+	logger.Log("[SQL] " + sql);
 	s, errs = conn.Prepare(sql);
 	if errs != "" {
 		println("SQL ERROR: " + conn.ErrMsg());
