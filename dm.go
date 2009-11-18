@@ -8,6 +8,7 @@ import (
 	"container/vector";
 	"os";
 	"log";
+	"time";
 )
 
 //type Connection sqlite3.Handle;
@@ -116,39 +117,42 @@ func build_result(o reflect.Value, st *sqlite3.Statement) reflect.Value {
 
 func Execute(sql string) (s *sqlite3.Statement, err int) {
 	errs := "";
-	logger.Log("[SQL] " + sql);
+	before := time.Nanoseconds();
 	s, errs = conn.Prepare(sql);
 	if errs != "" {
 		println("SQL ERROR: " + conn.ErrMsg());
 		die();
 	}
 	err = s.Step();
+	after := time.Nanoseconds();
+	elap := float64(after-before) / 1000 / 1000;
+	logger.Logf("SQL (%.1fms)  " + sql, elap);
 	return s, err;
 }
 
 func die()	{ os.Exit(1) }
 
 func (m *Model) select_one_sql(id int, options Opts) string {
-	return fmt.Sprintf("select * from "+m.TableName+" where id = %d", id)
+	return fmt.Sprintf("SELECT * FROM "+m.TableName+" WHERE id = %d", id)
 }
 
 func (m *Model) select_all_sql(options Opts) string	{ 
-	sql := "select * from " + m.TableName;
+	sql := "SELECT * FROM " + m.TableName;
 	if len(options)>0 {
 		conds, ok := options["conditions"];
 		if ok {
-			sql = sql + fmt.Sprintf(" where (%s)", conds.(string))
+			sql = sql + fmt.Sprintf(" WHERE (%s)", conds.(string))
 		}	
 		limit, ok := options["limit"];
 		if ok && limit.(int) > 0 {
-			sql = sql + fmt.Sprintf(" limit %d", options["limit"].(int))
+			sql = sql + fmt.Sprintf(" LIMIT %d", options["limit"].(int))
 		}	
 	}
 	return sql 
 }
 
 func (m *Model) select_count_sql(options Opts) string {
-	return fmt.Sprintf("select count(id) from " + m.TableName)
+	return fmt.Sprintf("SELECT COUNT(id) FROM " + m.TableName)
 }
 
 // model stuff
@@ -177,7 +181,7 @@ func (m *Model) All(opts ...) (r ResultSet) {
 
 func (m *Model) First(opts ...) interface{} {
 	options := parse_options(opts);
-	sql := m.select_all_sql(options) + " limit 1";
+	sql := m.select_all_sql(options) + " LIMIT 1";
 	return m.single_result(sql);	
 }
 
@@ -189,6 +193,6 @@ func (m *Model) Find(id int, opts ...) interface{} {
 
 func (m *Model) Last(opts ...) interface{} {
 	options := parse_options(opts);
-	sql := m.select_all_sql(options) + " order by id desc limit 1";
+	sql := m.select_all_sql(options) + " ORDER BY id desc LIMIT 1";
 	return m.single_result(sql);
 }
