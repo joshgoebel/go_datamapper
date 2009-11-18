@@ -60,7 +60,14 @@ func (m *Model) single_result(sql string) interface{} {
 		defer res.Finalize()
 	}
 	o := reflect.MakeZero(m.Type);
-	build_result(o, res);
+	if err == 101 {// not found
+		f := o.(*reflect.StructValue).FieldByName("Null");
+		f.(*reflect.BoolValue).Set(true);
+		// return nil;
+		} else {
+		build_result(o, res);
+	}
+		
 	return o.Interface();
 }
 
@@ -116,22 +123,34 @@ func Execute(sql string) (s *sqlite3.Statement, err int) {
 
 func die()	{ os.Exit(1) }
 
-func select_one_sql(model string, id int) string {
-	return fmt.Sprintf("select * from "+model+"s where id = %d", id)
+func (m *Model) select_one_sql(id int, options Opts) string {
+	return fmt.Sprintf("select * from "+m.TableName+" where id = %d", id)
 }
 
-func select_all_sql(model string) string	{ 
-	return fmt.Sprintf("select * from " + model + "s") 
+func (m *Model) select_all_sql(options Opts) string	{ 
+	sql := "select * from " + m.TableName;
+	if len(options)>0 {
+		conds, ok := options["conditions"];
+		if ok {
+			sql = sql + fmt.Sprintf(" where (%s)", conds.(string))
+		}	
+		limit, ok := options["limit"];
+		if ok && limit.(int) > 0 {
+			sql = sql + fmt.Sprintf(" limit %d", options["limit"].(int))
+		}	
+	}
+	return sql 
 }
 
-func select_count_sql(model string) string {
-	return fmt.Sprintf("select count(id) from " + model + "s")
+func (m *Model) select_count_sql(options Opts) string {
+	return fmt.Sprintf("select count(id) from " + m.TableName)
 }
 
 // model stuff
 
-func (m *Model) Count() int {
-	sql := select_count_sql(m.Name);
+func (m *Model) Count(opts ...) int {
+	options := parse_options(opts);
+	sql := m.select_count_sql(options);
 	res, err := Execute(sql);
 	if err != 0 {
 		defer res.Finalize()
@@ -142,13 +161,7 @@ func (m *Model) Count() int {
 func (m *Model) All(opts ...) (r ResultSet) {
 	options := parse_options(opts);
 	r = ResultSet{};
-	sql := "";
-	limit, ok := options["limit"];
-	if ok && limit.(int) > 0 {
-		sql = select_all_sql(m.Name) + fmt.Sprintf(" limit %d", options["limit"].(int))
-	} else {
-		sql = select_all_sql(m.Name)
-	}
+	sql := m.select_all_sql(options);
 	res, err := Execute(sql);
 	if err != 0 {
 		defer res.Finalize()
@@ -157,17 +170,20 @@ func (m *Model) All(opts ...) (r ResultSet) {
 	return;
 }
 
-func (m *Model) First() interface{} {
-	sql := select_all_sql(m.Name) + " limit 1";
+func (m *Model) First(opts ...) interface{} {
+	options := parse_options(opts);
+	sql := m.select_all_sql(options) + " limit 1";
 	return m.single_result(sql);	
 }
 
-func (m *Model) Find(id int) interface{} {
-	sql := select_one_sql(m.Name, id);
+func (m *Model) Find(id int, opts ...) interface{} {
+	options := parse_options(opts);
+	sql := m.select_one_sql(id, options);
 	return m.single_result(sql);
 }
 
-func (m *Model) Last() interface{} {
-	sql := select_all_sql(m.Name) + " order by id desc limit 1";
+func (m *Model) Last(opts ...) interface{} {
+	options := parse_options(opts);
+	sql := m.select_all_sql(options) + " order by id desc limit 1";
 	return m.single_result(sql);
 }

@@ -10,6 +10,7 @@ type State struct {
 	Id	int;
 	Name	string;
 	Abbv	string;
+	Null	bool;
 	*dm.Model;
 }
 
@@ -29,6 +30,14 @@ func main() {
 	state = States.First().(State);
 	fmt.Printf("FIRST: %s\n", state.Name);
 
+	// null
+	state = States.First(dm.Opts{"conditions": "name='Russia'"}).(State);
+	if state.Null {
+	 println("Can't find russia: NULL")
+	}else {
+		fmt.Printf("RUSSIA: %s\n", state.Name);
+	}
+
 	state = States.Last().(State);
 	fmt.Printf("LAST: %s\n", state.Name);
 
@@ -42,7 +51,7 @@ func main() {
 		fmt.Printf("id: %d  name: %s abbv: %s\n", state.Id, state.Name, state.Abbv);
 	}
 	println();
-
+	
 	println("States");
 	states = States.All();
 	for s := range states.Results.Iter() {
