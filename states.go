@@ -10,26 +10,33 @@ type State struct {
 	Id	int;
 	Name	string;
 	Abbv	string;
-	// *dm.Model;
+	*dm.Model;
+}
+
+// declare models globally
+var States dm.Model;
+
+func setup() {
+	dm.Init("states.db");	
+	States = dm.AddModel("State", "states", reflect.Typeof(State{}));
 }
 
 func main() {
-	dm.Init("states.db");
-	dm.RegisterModel("State", reflect.Typeof(State{}));
-	state := dm.Find("State", 12).(State);
+	setup();
+	state := States.Find(12).(State);
 	fmt.Printf("FIND BY ID: %s\n", state.Name);
-
-	state = dm.FindFirst("State").(State);
+	
+	state = States.First().(State);
 	fmt.Printf("FIRST: %s\n", state.Name);
 
-	state = dm.FindLast("State").(State);
+	state = States.Last().(State);
 	fmt.Printf("LAST: %s\n", state.Name);
 
-	count := dm.Count("State");
+	count := States.Count();
 	fmt.Printf("COUNT: %d\n", count);
 
 	println("First 5 states");
-	states := dm.FindAll("State", dm.Opts{"limit": 5});
+	states := States.All(dm.Opts{"limit": 5});
 	for s := range states.Results.Iter() {
 		state = s.(State);
 		fmt.Printf("id: %d  name: %s abbv: %s\n", state.Id, state.Name, state.Abbv);
@@ -37,7 +44,7 @@ func main() {
 	println();
 
 	println("States");
-	states = dm.FindAll("State");
+	states = States.All();
 	for s := range states.Results.Iter() {
 		state = s.(State);
 		fmt.Printf("id: %d  name: %s abbv: %s\n", state.Id, state.Name, state.Abbv);
